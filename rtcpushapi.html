@@ -3,30 +3,68 @@
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>WebRTC webcam</title>
+    <title>WebRTC Digital Human</title>
     <style>
     button {
-        padding: 8px 16px;
+        padding: 16px 32px;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 18px;
+        cursor: pointer;
     }
 
-
-    .option {
-        margin-bottom: 8px;
+    .media-class {
+        width: 100vw;
+        height: 60vh;
+        background-color: #000;
+        margin: 0 auto;
+        position: relative;
+        display: none; /* 初始隐藏视频，待拨通后显示 */
     }
 
+    .meta-human-class {
+        width: 100%;
+        object-position: 0 0;
+        position: relative;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    .chat-overlay {
+        position: absolute;
+        top: 5%;
+        left: 5%;
+        width: 90%;
+        background-color: rgba(255, 255, 255, 0.8);
+        padding: 10px;
+        border-radius: 10px;
+        font-size: 16px;
+        overflow-y: auto;
+        max-height: 50%;
+    }
+
+    .chat-class {
+        width: 100vw;
+        height: 40vh;
+    }
+
+    #tts_button {
+        position: absolute;
+        top: 5%;
+        right: 5%;
+        padding: 10px;
+        cursor: pointer;
+    }
     </style>
 </head>
 <body>
 
 <div id="media" class="media-class">
-    <!-- <h2>Media</h2> -->
-    <video id="rtc_media_player" controls autoplay  class="meta-human-class"></video>
-    <langflow-chat
-        window_title="通过数字人进行沟通"
-        flow_id="5e5275fe-9b5b-47cf-9798-46ab83df9216"
-        host_url="https://metahuman.assion.cn"
-        class="chat-class"
-    ></langflow-chat>
+    <video id="rtc_media_player" controls autoplay class="meta-human-class"></video>
+    <button id="tts_button">语音播放</button>
+    <div id="chat_overlay" class="chat-overlay"></div>
 </div>
 
 <script src="srs.sdk.js"></script>
@@ -34,122 +72,65 @@
 <script type="text/javascript" src="jquery-2.1.1.min.js"></script>
 <script type="text/javascript" src="bundle.min.js"></script>
 
-<button class="btn btn-primary" id="btn_play">开始</button>
-</body>
+<button class="btn btn-primary" id="btn_request">申请连线</button>
+
 <script type="text/javascript" charset="utf-8">
+    $(document).ready(function() {
+        var sdk = null;
 
-	$(document).ready(function() {
-	  // var host = window.location.hostname
-	  // var ws = new WebSocket("ws://"+host+":8000/humanecho");
-	  // //document.getElementsByTagName("video")[0].setAttribute("src", aa["video"]);
-	  // ws.onopen = function() {
-		// console.log('Connected');
-	  // };
-	  // ws.onmessage = function(e) {
-		// console.log('Received: ' + e.data);
-		// data = e
-		// var vid = JSON.parse(data.data); 
-		// console.log(typeof(vid),vid)
-		// //document.getElementsByTagName("video")[0].setAttribute("src", vid["video"]);
-		
-	  // };
-	  // ws.onclose = function(e) {
-		// console.log('Closed');
-	  // };
+        var startPlay = function() {
+            $('#media').show(); // 显示视频区域
+            $('#btn_request').hide(); // 隐藏申请连线按钮
 
-	  $('#echo-form').on('submit', function(e) {
-      e.preventDefault();
-      var message = $('#message').val();
-      console.log('Sending: ' + message);
-      fetch('/human', {
-            body: JSON.stringify({
-                text: message,
-                type: 'echo',
-            }),
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            method: 'POST'
-      });
-      //ws.send(message);
-      $('#message').val('');
-	  });
-	});
+            if (sdk) {
+                sdk.close();
+            }
+            sdk = new SrsRtcWhipWhepAsync();
 
-  $(function(){
-    var sdk = null; // Global handler to do cleanup when republishing.
-    var startPlay = function() {
-        $('#rtc_media_player').show();
+            $('#rtc_media_player').prop('srcObject', sdk.stream);
 
-        // Close PC when user replay.
-        if (sdk) {
-            sdk.close();
-        }
-        sdk = new SrsRtcWhipWhepAsync();
+            var url = "https://metahuman.assion.cn/rtc/v1/whep/?app=live&stream=livestream";
+            sdk.play(url).then(function(session) {
+                console.log('Playing stream with session ID:', session.sessionid);
+            }).catch(function(reason) {
+                sdk.close();
+                $('#rtc_media_player').hide();
+                console.error('Playback error:', reason);
+            });
+        };
 
-        // User should set the stream when publish is done, @see https://webrtc.org/getting-started/media-devices
-        // However SRS SDK provides a consist API like https://webrtc.org/getting-started/remote-streams
-        $('#rtc_media_player').prop('srcObject', sdk.stream);
-        // Optional callback, SDK will add track to stream.
-        // sdk.ontrack = function (event) { console.log('Got track', event); sdk.stream.addTrack(event.track); };
+        // 申请连线按钮点击事件
+        $("#btn_request").click(startPlay);
 
-        var host = window.location.hostname
-        // For example: webrtc://r.ossrs.net/live/livestream
-        var url = "https://metahuman.assion.cn/rtc/v1/whep/?app=live&stream=livestream"
-        sdk.play(url).then(function(session){
-            //$('#sessionid').html(session.sessionid);
-            //$('#simulator-drop').attr('href', session.simulator + '?drop=1&username=' + session.sessionid);
-        }).catch(function (reason) {
-            sdk.close();
-            $('#rtc_media_player').hide();
-            console.error(reason);
+        // 模拟对话内容
+        var chatMessages = [
+            { speaker: 'AI', text: '您好，请问有什么需要帮助的吗？' },
+            { speaker: 'User', text: '我想了解一下今天的天气。' },
+            { speaker: 'AI', text: '今天的天气晴朗，温度大约在25度左右。' }
+        ];
+
+        // 在视频上显示对话内容
+        var chatIndex = 0;
+        var displayChat = function() {
+            if (chatIndex < chatMessages.length) {
+                var message = chatMessages[chatIndex];
+                $('#chat_overlay').append('<p><strong>' + message.speaker + ':</strong> ' + message.text + '</p>');
+                chatIndex++;
+            }
+        };
+
+        // 每隔2秒显示一条对话
+        setInterval(displayChat, 2000);
+
+        // TTS按钮点击事件，用于语音播放对话
+        $('#tts_button').click(function() {
+            if (chatIndex > 0) {
+                var message = chatMessages[chatIndex - 1].text;
+                var speech = new SpeechSynthesisUtterance(message);
+                window.speechSynthesis.speak(speech);
+            }
         });
-    };
-
-    $('#rtc_media_player').hide();
-    // var query = parse_query_string();
-    // srs_init_whep("#txt_url", query);
-
-    $("#btn_play").click(startPlay);
-    // Never play util windows loaded @see https://github.com/ossrs/srs/issues/2732
-    // if (query.autostart === 'true') {
-    //     $('#rtc_media_player').prop('muted', true);
-    //     console.warn('For autostart, we should mute it, see https://www.jianshu.com/p/c3c6944eed5a ' +
-    //         'or https://developers.google.com/web/updates/2017/09/autoplay-policy-changes#audiovideo_elements');
-    //     window.addEventListener("load", function(){ startPlay(); });
-    // }
-});
+    });
 </script>
-<style>
-.media-class{
-    
-    width: 100vw;
-    height: 60vh;
-    background-color:#000 ;
-  margin: 0 auto;
-  position: relative;
-}
-.meta-human-class{
-    width:100%;
-            object-position: 0 0;       
-        position: relative; /*脱离文档流*/
-        top: 50%; /*偏移*/
-        /* 这里有兼容性问题 */
-        -webkit-transform: translateY(-50%);
-        -ms-transform: translateY(-50%);
-        -o-transform: translateY(-50%);
-        transform: translateY(-50%);
-}
-.chat-class{
-    
-    width: 100vw;
-    height: 40vh;
-}
-.cl-window{
-
-    width: 100vw;
-    height: 40vh;
-}
-
-</style>
+</body>
 </html>
