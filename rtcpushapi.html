@@ -1,20 +1,452 @@
-fetch('https://langflow.assion.cn/api/v1/run/5e5275fe-9b5b-47cf-9798-46ab83df9216?stream=false', {
-    method: 'POST',
-    headers: {
-        'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-        "input_value": text,
-        "output_type": "chat",
-        "input_type": "chat",
-        "tweaks": {
-            "ChatInput-wyLTJ": {},
-            "ChatOutput-IE8Ts": {},
-            "OllamaModel-Fq1gy": {},
-            "APIRequest-sQkPR": {},
-            "TextOutput-hiW2h": {},
-            "ParseData-xSVJH": {},
-            "Prompt-oV3rX": {}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+    <title>WebRTC Digital Human</title>
+    <style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #f5f5f5;
+        margin: 0;
+        overflow: hidden;
+    }
+
+    #call_screen, #main_screen, #video_screen, #rating_screen {
+        display: none;
+    }
+
+    #main_screen {
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #call_screen {
+        width: 100vw;
+        height: 100vh;
+        background: linear-gradient(180deg, #ffffff, #e0e0e0);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+    }
+
+    #video_screen {
+        width: 100vw;
+        height: 100vh;
+        background-color: #000;
+        position: relative;
+    }
+
+    #rating_screen {
+        width: 100vw;
+        height: 100vh;
+        background: #ffffff;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .doctor-card {
+        background: #ffffff;
+        border-radius: 20px;
+        width: 80%;
+        max-width: 500px;
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .doctor-image {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        object-fit: cover;
+        margin-bottom: 15px;
+    }
+
+    .doctor-name {
+        font-size: 24px;
+        color: #1a73e8;
+        margin: 0;
+    }
+
+    .doctor-title {
+        font-size: 16px;
+        color: #555;
+        margin: 10px 0 20px 0;
+    }
+
+    .doctor-bio {
+        font-size: 14px;
+        color: #777;
+        margin: 0;
+    }
+
+    #call_button {
+        position: relative;
+        margin-top: 20px;
+        width: 60px;
+        height: 60px;
+        background-color: #1a73e8;
+        border-radius: 50%;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        font-size: 18px;
+        color: #fff;
+    }
+
+    #call_status {
+        margin-top: 10px;
+        font-size: 24px;
+        color: #1a73e8;
+        display: none;
+        animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+        0%, 100% {
+            opacity: 1;
         }
-    })
-})
+        50% {
+            opacity: 0.5;
+        }
+    }
+
+    #btn_request {
+        padding: 16px 32px;
+        font-size: 18px;
+        background-color: #1a73e8;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+
+    #btn_request:hover {
+        background-color: #155ab4;
+    }
+
+    #rtc_media_player {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    #chat_overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        color: #fff;
+        padding: 10px;
+        font-size: 16px;
+        max-height: 30%;
+        overflow-y: auto;
+    }
+
+    #controls {
+        position: absolute;
+        bottom: 50px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 30px;
+    }
+
+    .control-button {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        border: none;
+        cursor: pointer;
+        color: #fff;
+        font-size: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    #voice_input_button {
+        background-color: #ffffff;
+        color: #000;
+    }
+
+    #voice_input_button.recording {
+        background-color: #4CAF50;
+        animation: ripple 1.5s infinite;
+    }
+
+    @keyframes ripple {
+        0% {
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+        }
+        50% {
+            box-shadow: 0 0 20px rgba(76, 175, 80, 0.8);
+        }
+        100% {
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+        }
+    }
+
+    #hangup_button {
+        background-color: #FF3B30;
+    }
+
+    #rating_screen h2 {
+        margin-bottom: 20px;
+    }
+
+    .rating-category {
+        margin-bottom: 15px;
+    }
+
+    .stars {
+        display: flex;
+        gap: 5px;
+    }
+
+    .star {
+        font-size: 30px;
+        cursor: pointer;
+    }
+
+    .star.selected {
+        color: #FFD700;
+    }
+
+    #submit_rating {
+        margin-top: 20px;
+        padding: 10px 20px;
+        font-size: 16px;
+        background-color: #1a73e8;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+    </style>
+</head>
+<body>
+
+<div id="main_screen">
+    <button id="btn_request">申请连线</button>
+</div>
+
+<div id="call_screen">
+    <div class="doctor-card">
+        <img src="https://via.placeholder.com/120" alt="医生" class="doctor-image">
+        <h2 class="doctor-name">张海生医生</h2>
+        <p class="doctor-title">杭州市第一人民医院 精神科医生</p>
+        <p class="doctor-bio">张医生是精神心理健康方面的专家，具有丰富的临床经验。</p>
+    </div>
+    <button id="call_button"><span class="call-icon">&#9742;</span></button> <!-- 拨号按钮 -->
+    <div id="call_status">拨号中...</div> <!-- 拨号状态 -->
+</div>
+
+<div id="video_screen">
+    <video id="rtc_media_player" controls autoplay></video>
+    <div id="chat_overlay"></div>
+    <div id="controls">
+        <button id="voice_input_button" class="control-button">&#127908;</button> <!-- 麦克风按钮 -->
+        <button id="hangup_button" class="control-button">&#128682;</button> <!-- 挂断按钮 -->
+    </div>
+</div>
+
+<div id="rating_screen">
+    <h2>请对本次服务进行评价</h2>
+    <div class="rating-category">
+        <p>交流顺利：</p>
+        <div class="stars" id="communication_stars"></div>
+    </div>
+    <div class="rating-category">
+        <p>服务满意：</p>
+        <div class="stars" id="service_stars"></div>
+    </div>
+    <button id="submit_rating">提交评价</button>
+</div>
+
+<script src="srs.sdk.js"></script>
+<script type="text/javascript" src="https://cdn.sockjs.org/sockjs-0.3.4.js"></script>
+<script type="text/javascript" src="jquery-2.1.1.min.js"></script>
+<script type="text/javascript" src="bundle.min.js"></script>
+
+<script type="text/javascript">
+    document.addEventListener("DOMContentLoaded", function() {
+        const btnRequest = document.getElementById("btn_request");
+        const callScreen = document.getElementById("call_screen");
+        const mainScreen = document.getElementById("main_screen");
+        const callButton = document.getElementById("call_button");
+        const callStatus = document.getElementById("call_status");
+        const videoScreen = document.getElementById("video_screen");
+        const rtcMediaPlayer = document.getElementById("rtc_media_player");
+        const voiceInputButton = document.getElementById("voice_input_button");
+        const hangupButton = document.getElementById("hangup_button");
+        const chatOverlay = document.getElementById("chat_overlay");
+        const ratingScreen = document.getElementById("rating_screen");
+        const submitRating = document.getElementById("submit_rating");
+
+        let sdk = null;
+
+        // 申请连线按钮点击事件
+        btnRequest.addEventListener("click", function() {
+            mainScreen.style.display = "none";
+            callScreen.style.display = "flex";
+            // 重置拨号按钮状态
+            callButton.disabled = false;
+            callStatus.style.display = "none";
+        });
+
+        // 拨号按钮点击事件
+        callButton.addEventListener("click", function() {
+            callButton.disabled = true;
+            callStatus.style.display = "block"; // 显示拨号中状态
+
+            // 模拟拨号 3 秒后进入视频界面
+            setTimeout(function() {
+                callScreen.style.display = "none";
+                videoScreen.style.display = "block";
+                startVideoStream();
+            }, 3000);
+        });
+
+        // 启动视频流
+        function startVideoStream() {
+            if (sdk) {
+                sdk.close();
+            }
+            sdk = new SrsRtcWhipWhepAsync();
+
+            const url = "https://metahuman.assion.cn/rtc/v1/whep/?app=live&stream=livestream";
+            sdk.play(url).then(function(session) {
+                rtcMediaPlayer.srcObject = sdk.stream;
+            }).catch(function(reason) {
+                console.error('Playback error:', reason);
+                sdk.close();
+            });
+        }
+
+        // 语音输入功能
+        let recognition;
+        if ('webkitSpeechRecognition' in window) {
+            recognition = new webkitSpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = "zh-CN";
+
+            voiceInputButton.addEventListener("click", function() {
+                if (voiceInputButton.classList.contains("recording")) {
+                    recognition.stop();
+                    voiceInputButton.classList.remove("recording");
+                } else {
+                    recognition.start();
+                    voiceInputButton.classList.add("recording");
+                }
+            });
+
+            recognition.onresult = function(event) {
+                const transcript = event.results[0][0].transcript;
+                appendChatMessage("User", transcript);
+                sendTextToBackend(transcript);
+                voiceInputButton.classList.remove("recording");
+            };
+
+            recognition.onerror = function(event) {
+                console.error("Recognition error:", event.error);
+                voiceInputButton.classList.remove("recording");
+            };
+        } else {
+            console.error("Speech recognition not supported in this browser.");
+        }
+
+        // 挂断按钮点击事件
+        hangupButton.addEventListener("click", function() {
+            if (sdk) {
+                sdk.close();
+            }
+            videoScreen.style.display = "none";
+            ratingScreen.style.display = "flex";
+        });
+
+        // 发送识别的文本到后端接口
+        function sendTextToBackend(text) {
+            fetch('http://langflow.assion.cn/api/v1/run/5e5275fe-9b5b-47cf-9798-46ab83df9216?stream=false', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    "input_value": text,
+                    "output_type": "chat",
+                    "input_type": "chat",
+                    "tweaks": {
+                        "ChatInput-wyLTJ": {},
+                        "ChatOutput-IE8Ts": {},
+                        "OllamaModel-Fq1gy": {},
+                        "APIRequest-sQkPR": {},
+                        "TextOutput-hiW2h": {},
+                        "ParseData-xSVJH": {},
+                        "Prompt-oV3rX": {}
+                    }
+                })
+            }).then(response => response.json())
+            .then(data => {
+                appendChatMessage("AI", data.output);
+            }).catch(error => {
+                console.error("Error sending text to backend:", error);
+            });
+        }
+
+        // 添加聊天消息到对话区域
+        function appendChatMessage(speaker, message) {
+            const messageElement = document.createElement("p");
+            messageElement.innerHTML = `<strong>${speaker}:</strong> ${message}`;
+            chatOverlay.appendChild(messageElement);
+            chatOverlay.scrollTop = chatOverlay.scrollHeight;
+        }
+
+        // 星级评定功能
+        function createStars(container) {
+            for (let i = 0; i < 5; i++) {
+                const star = document.createElement("span");
+                star.innerHTML = "&#9733;";
+                star.classList.add("star");
+                container.appendChild(star);
+                star.addEventListener("click", function() {
+                    setStarRating(container, i + 1);
+                });
+            }
+        }
+
+        function setStarRating(container, rating) {
+            const stars = container.children;
+            for (let i = 0; i < stars.length; i++) {
+                stars[i].classList.toggle("selected", i < rating);
+            }
+        }
+
+        createStars(document.getElementById("communication_stars"));
+        createStars(document.getElementById("service_stars"));
+
+        submitRating.addEventListener("click", function() {
+            ratingScreen.style.display = "none";
+            mainScreen.style.display = "flex";
+        });
+    });
+</script>
+
+</body>
+</html>
