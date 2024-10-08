@@ -1,136 +1,20 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>WebRTC Digital Human</title>
-    <style>
-    button {
-        padding: 16px 32px;
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        font-size: 18px;
-        cursor: pointer;
-    }
-
-    .media-class {
-        width: 100vw;
-        height: 60vh;
-        background-color: #000;
-        margin: 0 auto;
-        position: relative;
-        display: none; /* 初始隐藏视频，待拨通后显示 */
-    }
-
-    .meta-human-class {
-        width: 100%;
-        object-position: 0 0;
-        position: relative;
-        top: 50%;
-        transform: translateY(-50%);
-    }
-
-    .chat-overlay {
-        position: absolute;
-        top: 5%;
-        left: 5%;
-        width: 90%;
-        background-color: rgba(255, 255, 255, 0.8);
-        padding: 10px;
-        border-radius: 10px;
-        font-size: 16px;
-        overflow-y: auto;
-        max-height: 50%;
-    }
-
-    .chat-class {
-        width: 100vw;
-        height: 40vh;
-    }
-
-    #tts_button {
-        position: absolute;
-        top: 5%;
-        right: 5%;
-        padding: 10px;
-        cursor: pointer;
-    }
-    </style>
-</head>
-<body>
-
-<div id="media" class="media-class">
-    <video id="rtc_media_player" controls autoplay class="meta-human-class"></video>
-    <button id="tts_button">语音播放</button>
-    <div id="chat_overlay" class="chat-overlay"></div>
-</div>
-
-<script src="srs.sdk.js"></script>
-<script type="text/javascript" src="https://cdn.sockjs.org/sockjs-0.3.4.js"></script>
-<script type="text/javascript" src="jquery-2.1.1.min.js"></script>
-<script type="text/javascript" src="bundle.min.js"></script>
-
-<button class="btn btn-primary" id="btn_request">申请连线</button>
-
-<script type="text/javascript" charset="utf-8">
-    $(document).ready(function() {
-        var sdk = null;
-
-        var startPlay = function() {
-            $('#media').show(); // 显示视频区域
-            $('#btn_request').hide(); // 隐藏申请连线按钮
-
-            if (sdk) {
-                sdk.close();
-            }
-            sdk = new SrsRtcWhipWhepAsync();
-
-            $('#rtc_media_player').prop('srcObject', sdk.stream);
-
-            var url = "https://metahuman.assion.cn/rtc/v1/whep/?app=live&stream=livestream";
-            sdk.play(url).then(function(session) {
-                console.log('Playing stream with session ID:', session.sessionid);
-            }).catch(function(reason) {
-                sdk.close();
-                $('#rtc_media_player').hide();
-                console.error('Playback error:', reason);
-            });
-        };
-
-        // 申请连线按钮点击事件
-        $("#btn_request").click(startPlay);
-
-        // 模拟对话内容
-        var chatMessages = [
-            { speaker: 'AI', text: '您好，请问有什么需要帮助的吗？' },
-            { speaker: 'User', text: '我想了解一下今天的天气。' },
-            { speaker: 'AI', text: '今天的天气晴朗，温度大约在25度左右。' }
-        ];
-
-        // 在视频上显示对话内容
-        var chatIndex = 0;
-        var displayChat = function() {
-            if (chatIndex < chatMessages.length) {
-                var message = chatMessages[chatIndex];
-                $('#chat_overlay').append('<p><strong>' + message.speaker + ':</strong> ' + message.text + '</p>');
-                chatIndex++;
-            }
-        };
-
-        // 每隔2秒显示一条对话
-        setInterval(displayChat, 2000);
-
-        // TTS按钮点击事件，用于语音播放对话
-        $('#tts_button').click(function() {
-            if (chatIndex > 0) {
-                var message = chatMessages[chatIndex - 1].text;
-                var speech = new SpeechSynthesisUtterance(message);
-                window.speechSynthesis.speak(speech);
-            }
-        });
-    });
-</script>
-</body>
-</html>
+fetch('https://langflow.assion.cn/api/v1/run/5e5275fe-9b5b-47cf-9798-46ab83df9216?stream=false', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+        "input_value": text,
+        "output_type": "chat",
+        "input_type": "chat",
+        "tweaks": {
+            "ChatInput-wyLTJ": {},
+            "ChatOutput-IE8Ts": {},
+            "OllamaModel-Fq1gy": {},
+            "APIRequest-sQkPR": {},
+            "TextOutput-hiW2h": {},
+            "ParseData-xSVJH": {},
+            "Prompt-oV3rX": {}
+        }
+    })
+})
