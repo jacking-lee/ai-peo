@@ -404,7 +404,8 @@
                 })
             }).then(response => response.json())
             .then(data => {
-                appendChatMessage("AI", data.output);
+                const outputMessage = data.outputs[0].outputs[0].results.message.text;
+                appendChatMessage("AI", outputMessage);
             }).catch(error => {
                 console.error("Error sending text to backend:", error);
             });
